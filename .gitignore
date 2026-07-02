@@ -1,14 +1,24 @@
 .venv/
+venv/
+env/
 __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.tox/
+.nox/
 .coverage
+coverage.xml
 htmlcov/
 
 *.pyc
 *.pyo
 *.pyd
+*$py.class
+
+build/
+dist/
+*.egg-info/
 
 /.env
 /config.json
@@ -19,6 +29,7 @@ htmlcov/
 /runtime/
 
 *.log
+pip-log.txt
 
 .copilot_device_auth.json
 .copilot_models.json

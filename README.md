@@ -145,7 +145,7 @@ runtime/sessions/<session_id>/
 Uploaded resume PDFs and generated PDF deliverables are also attached to the ADK session artifact store, which makes them downloadable from the web UI in Cloud Run.
 ```
 
-This design keeps session data isolated and prevents the pilot from overwriting the repo’s older root-level workflow state.
+This design keeps session data isolated and prevents the pilot from overwriting the repo's older root-level workflow state.
 
 ## Skill Bundle
 
@@ -187,12 +187,12 @@ Repo config notes:
 Run the tests with:
 
 ```bash
-.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
 Current status at the time of writing:
 
-- `17 passed`
+- `28 passed`
 
 ## Deployment Steps
 

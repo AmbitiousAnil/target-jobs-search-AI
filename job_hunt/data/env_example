@@ -1,0 +1,37 @@
+# TinyFish API — get yours at https://agent.tinyfish.ai
+TINYFISH_API_KEY="your_tinyfish_api_key_here"
+
+# OpenRouter API — free tier available at https://openrouter.ai
+OPENROUTER_API_KEY="your_openrouter_api_key_here"
+OPENROUTER_MODEL="meta-llama/llama-3.3-70b-instruct:free"
+OPENROUTER_FALLBACK_MODELS="nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-31b-it:free,qwen/qwen3-coder:free"
+
+# Nvidia API (optional - set llm_provider=nvidia in config.json)
+NVIDIA_API_KEY="your_nvidia_api_key_here"
+NVIDIA_MODEL="nvidia/llama-3.3-nemotron-super-49b-v1"
+# NVIDIA_FALLBACK_MODELS="nvidia/nemotron-3-super-120b-a12b"
+
+# Z.ai API (optional - set llm_provider=zai in config.json)
+# Z_AI_API_KEY="your_z_ai_api_key_here"
+# Z_AI_MODEL="glm-4.5-air"
+# Z_AI_FALLBACK_MODELS="glm-4.5"
+
+# Ollama (optional - set llm_provider=ollama in config.json)
+# OLLAMA_BASE_URL="http://localhost:11434/v1"
+# OLLAMA_MODEL="gemma4fable"
+# OLLAMA_MAX_TOKENS="8192"
+# OLLAMA_FALLBACK_MODELS="gemma3:latest"
+
+# Anthropic / Claude (optional — alternative to OpenRouter)
+# Set llm_provider=anthropic in config.json to use Claude instead of OpenRouter
+# ANTHROPIC_API_KEY="your_anthropic_api_key_here"
+
+# Telegram Notification (optional — create bot via @BotFather)
+TELEGRAM_TOKEN="your_telegram_bot_token_here"
+TELEGRAM_CHAT_ID="your_telegram_chat_id_here"
+
+# Candidate Configuration (overrides config.json)
+CANDIDATE_NAME="Your Name"
+RESUME_PATH="resume/YOUR_RESUME.md"
+MIN_SCORE=60
+TOP_N=5

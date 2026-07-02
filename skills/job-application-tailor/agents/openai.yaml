@@ -1,0 +1,4 @@
+interface:
+  display_name: "Job Application Tailor"
+  short_description: "Tailor resumes and cover letters for a selected job."
+  default_prompt: "Use the selected job and candidate profile to create a tailored resume and cover letter."

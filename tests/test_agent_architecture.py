@@ -22,7 +22,7 @@ def test_root_agent_uses_single_agent_tool_handoff():
         in agent_module.MASTER_INSTRUCTION
     )
     assert (
-        "To get started, send your resume text or upload a resume PDF, plus your target roles, target locations, and company career-page URLs and/or direct job URLs."
+        "To get started, send your resume text or upload a resume PDF, plus your target roles, target locations, and company career-page URLs."
         in agent_module.MASTER_INSTRUCTION
     )
     assert tool_names == [

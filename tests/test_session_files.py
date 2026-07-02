@@ -19,7 +19,6 @@ def test_stage_session_files_creates_isolated_workspace(tmp_path, monkeypatch):
             "https://careers.example.com/jobs",
             "https://jobs.secondco.ai/openings",
         ],
-        job_urls=[],
         target_roles=["ML Engineer", "AI Engineer"],
         target_locations=["Germany", "Remote"],
         min_score=70,
@@ -62,7 +61,6 @@ def test_stage_session_files_inherits_nvidia_model_settings_from_repo_config(tmp
     config = JobSearchConfiguration(
         resume_text="Senior ML engineer with Python and LLM experience.",
         company_urls=["https://careers.example.com/jobs"],
-        job_urls=[],
         target_roles=["ML Engineer"],
         target_locations=["Germany"],
     )
@@ -85,7 +83,6 @@ def test_stage_session_files_rejects_invalid_company_urls(tmp_path, monkeypatch)
     config = JobSearchConfiguration(
         resume_text="resume",
         company_urls=["careers.example.com/jobs"],
-        job_urls=[],
         target_roles=["Engineer"],
         target_locations=["India"],
     )
@@ -96,58 +93,3 @@ def test_stage_session_files_rejects_invalid_company_urls(tmp_path, monkeypatch)
         assert "http/https" in str(exc)
     else:
         raise AssertionError("Expected invalid URL validation to fail.")
-
-
-def test_stage_session_files_accepts_direct_job_urls_without_company_urls(tmp_path, monkeypatch):
-    monkeypatch.setenv("JOBHUNT_ADK_RUNTIME_ROOT", str(tmp_path / "runtime"))
-    monkeypatch.setattr(session_files, "_load_repo_config", lambda: {"tinyfish_api_key": ""})
-
-    config = JobSearchConfiguration(
-        resume_text="resume",
-        company_urls=[],
-        job_urls=[
-            "https://jobs.example.com/openings/staff-ml-engineer",
-            "https://jobs.secondco.ai/roles/principal-data-scientist",
-        ],
-        target_roles=[],
-        target_locations=[],
-    )
-
-    staged = stage_session_files("direct-jobs", config)
-
-    written_config = json.loads(staged.config_path.read_text(encoding="utf-8"))
-    written_companies = json.loads(staged.companies_path.read_text(encoding="utf-8"))
-    written_manifest = json.loads(staged.manifest_path.read_text(encoding="utf-8"))
-
-    assert written_companies == []
-    assert written_config["candidate"]["target_roles"] == []
-    assert written_config["candidate"]["target_locations"] == []
-    assert written_config["candidate"]["countries"] == []
-    assert written_config["adk_session"]["job_urls"] == [
-        "https://jobs.example.com/openings/staff-ml-engineer",
-        "https://jobs.secondco.ai/roles/principal-data-scientist",
-    ]
-    assert written_manifest["configuration"]["job_urls"] == [
-        "https://jobs.example.com/openings/staff-ml-engineer",
-        "https://jobs.secondco.ai/roles/principal-data-scientist",
-    ]
-
-
-def test_stage_session_files_rejects_missing_all_url_sources(tmp_path, monkeypatch):
-    monkeypatch.setenv("JOBHUNT_ADK_RUNTIME_ROOT", str(tmp_path / "runtime"))
-    monkeypatch.setattr(session_files, "_load_repo_config", lambda: {"tinyfish_api_key": ""})
-
-    config = JobSearchConfiguration(
-        resume_text="resume",
-        company_urls=[],
-        job_urls=[],
-        target_roles=["Engineer"],
-        target_locations=["India"],
-    )
-
-    try:
-        stage_session_files("missing-sources", config)
-    except ValueError as exc:
-        assert "company URL or one direct job URL" in str(exc)
-    else:
-        raise AssertionError("Expected missing URL-source validation to fail.")

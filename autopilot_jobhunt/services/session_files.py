@@ -69,10 +69,6 @@ def _normalize_string_list(values: list[str], field_name: str) -> list[str]:
     return normalized
 
 
-def _normalize_optional_string_list(values: list[str]) -> list[str]:
-    return _dedupe_preserving_order(values)
-
-
 def _derive_company_name(url: str) -> str:
     host = urlparse(url).netloc.lower()
     if host.startswith("www."):
@@ -97,15 +93,11 @@ def _derive_company_record(url: str, target_locations: list[str]) -> dict:
 class JobSearchConfiguration:
     resume_text: str
     company_urls: list[str]
-    job_urls: list[str]
     target_roles: list[str]
     target_locations: list[str]
     min_score: int = 60
     top_n: int = 5
     llm_provider_override: str | None = None
-
-    def direct_job_only_mode(self) -> bool:
-        return bool(_dedupe_preserving_order(self.job_urls)) and not bool(_dedupe_preserving_order(self.company_urls))
 
     def validated(self) -> "JobSearchConfiguration":
         resume_text = self.resume_text.strip()
@@ -117,27 +109,14 @@ class JobSearchConfiguration:
 
         llm_provider = self.llm_provider_override.strip() if self.llm_provider_override else None
         company_urls = _validate_url_list(self.company_urls, "Company URLs")
-        job_urls = _validate_url_list(self.job_urls, "Job URLs")
-        if not company_urls and not job_urls:
-            raise ValueError("Provide at least one company URL or one direct job URL.")
-        direct_job_only_mode = bool(job_urls) and not bool(company_urls)
-        target_roles = (
-            _normalize_optional_string_list(self.target_roles)
-            if direct_job_only_mode
-            else _normalize_string_list(self.target_roles, "target_roles")
-        )
-        target_locations = (
-            _normalize_optional_string_list(self.target_locations)
-            if direct_job_only_mode
-            else _normalize_string_list(self.target_locations, "target_locations")
-        )
+        if not company_urls:
+            raise ValueError("At least one company URL is required.")
 
         return JobSearchConfiguration(
             resume_text=resume_text,
             company_urls=company_urls,
-            job_urls=job_urls,
-            target_roles=target_roles,
-            target_locations=target_locations,
+            target_roles=_normalize_string_list(self.target_roles, "target_roles"),
+            target_locations=_normalize_string_list(self.target_locations, "target_locations"),
             min_score=min_score,
             top_n=top_n,
             llm_provider_override=llm_provider or None,
@@ -146,7 +125,6 @@ class JobSearchConfiguration:
     def public_summary(self) -> dict:
         return {
             "company_urls": list(self.company_urls),
-            "job_urls": list(self.job_urls),
             "target_roles": list(self.target_roles),
             "target_locations": list(self.target_locations),
             "min_score": self.min_score,
@@ -226,7 +204,6 @@ def stage_session_files(session_id: str, config: JobSearchConfiguration) -> Stag
         },
         "adk_session": {
             "company_urls": validated.company_urls,
-            "job_urls": validated.job_urls,
             "target_roles": validated.target_roles,
             "target_locations": validated.target_locations,
         },

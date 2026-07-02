@@ -22,7 +22,6 @@ def test_session_runtime_recovers_persisted_configuration_from_disk(tmp_path, mo
     config = JobSearchConfiguration(
         resume_text="resume text",
         company_urls=["https://careers.example.com/jobs"],
-        job_urls=[],
         target_roles=["Staff Engineer"],
         target_locations=["Remote"],
         min_score=70,
@@ -47,7 +46,6 @@ def test_session_runtime_recovers_persisted_configuration_from_disk(tmp_path, mo
     assert public_config is not None
     assert public_config["session_dir"] == str(staged.session_dir)
     assert public_config["target_roles"] == ["Staff Engineer"]
-    assert public_config["job_urls"] == []
     assert internal_config is not None
     assert internal_config["resume_text"] == "resume text"
     assert load_rescan_required(recovered_context) is True
@@ -60,7 +58,6 @@ def test_update_rescan_state_updates_disk_fallback(tmp_path, monkeypatch):
     config = JobSearchConfiguration(
         resume_text="resume text",
         company_urls=["https://careers.example.com/jobs"],
-        job_urls=[],
         target_roles=["Engineer"],
         target_locations=["USA"],
     )

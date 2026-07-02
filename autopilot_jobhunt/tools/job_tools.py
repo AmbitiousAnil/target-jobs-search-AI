@@ -7,7 +7,6 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 try:
     from google.adk.tools import ToolContext
@@ -213,7 +212,6 @@ def _scan_input_payload(config: dict) -> dict:
     return {
         "resume_text": str(config.get("resume_text") or "").strip(),
         "company_urls": list(config.get("company_urls") or []),
-        "job_urls": list(config.get("job_urls") or []),
         "target_roles": list(config.get("target_roles") or []),
         "target_locations": list(config.get("target_locations") or []),
         "llm_provider_override": config.get("llm_provider_override"),
@@ -279,12 +277,6 @@ def _score_result_message(summary: dict[str, Any]) -> str:
     matched_jobs = int(summary["above_threshold_jobs"])
     total_jobs = int(summary["scored_jobs"])
     min_score = int(summary["min_score"])
-    if min_score <= 0:
-        shown_matches = len(summary["top_matches"])
-        return (
-            f"Scoring complete. {total_jobs} job(s) were scored and ranked. "
-            f"Showing {shown_matches} matched job(s). {_score_selection_prompt(summary)}"
-        )
     if not matched_jobs:
         return (
             f"Scoring complete. {total_jobs} jobs were scored and 0 met min_score {min_score}. "
@@ -339,83 +331,13 @@ def _build_scored_jobs_response(
     }
 
 
-def _build_scout_summary(
-    staged: StagedSession,
-    raw_jobs: list[dict],
-    companies_total: int,
-    direct_job_urls_total: int = 0,
-) -> dict:
+def _build_scout_summary(staged: StagedSession, raw_jobs: list[dict], companies_total: int) -> dict:
     return {
         "companies_total": companies_total,
-        "direct_job_urls_total": direct_job_urls_total,
         "raw_jobs_count": len(raw_jobs),
         "raw_jobs_path": str(_raw_jobs_path(staged)),
         "sample_urls": [job.get("url") for job in raw_jobs[:3] if job.get("url")],
     }
-
-
-def _direct_job_urls(runtime_config: dict) -> list[str]:
-    adk_session = runtime_config.get("adk_session") or {}
-    return [str(url).strip() for url in adk_session.get("job_urls", []) if str(url).strip()]
-
-
-def _is_direct_job_only_input(*, company_urls: list[str], job_urls: list[str]) -> bool:
-    return bool(job_urls) and not bool(company_urls)
-
-
-def _default_location_text(runtime_config: dict) -> str:
-    candidate = runtime_config.get("candidate") or {}
-    target_locations = candidate.get("target_locations") or candidate.get("countries") or []
-    if isinstance(target_locations, str):
-        target_locations = [target_locations]
-    cleaned = [str(value).strip() for value in target_locations if str(value).strip()]
-    return ", ".join(cleaned)
-
-
-def _direct_job_company_name(url: str) -> str:
-    host = urlparse(url).netloc.lower()
-    if host.startswith("www."):
-        host = host[4:]
-    if not host:
-        return "Direct Job"
-    return host.split(".")[0].replace("-", " ").title()
-
-
-def _direct_job_title(url: str) -> str:
-    path = [segment for segment in urlparse(url).path.split("/") if segment]
-    if not path:
-        return url
-    return path[-1].replace("-", " ").replace("_", " ").title()
-
-
-def _seed_direct_jobs(job_urls: list[str], runtime_config: dict) -> list[dict[str, Any]]:
-    location = _default_location_text(runtime_config)
-    return [
-        {
-            "url": url,
-            "title": _direct_job_title(url),
-            "snippet": "",
-            "company": _direct_job_company_name(url),
-            "location": location,
-            "region": "Global",
-            "source": "direct_job_url",
-        }
-        for url in job_urls
-    ]
-
-
-def _extend_unique_jobs(existing_jobs: list[dict], new_jobs: list[dict]) -> list[dict]:
-    seen_urls = {str(job.get("url") or "").strip() for job in existing_jobs if job.get("url")}
-    added_jobs: list[dict] = []
-    for job in new_jobs:
-        job_url = str(job.get("url") or "").strip()
-        if job_url and job_url in seen_urls:
-            continue
-        if job_url:
-            seen_urls.add(job_url)
-        existing_jobs.append(job)
-        added_jobs.append(job)
-    return added_jobs
 
 
 def _load_runtime_config(staged: StagedSession) -> dict:
@@ -461,14 +383,12 @@ def _resolve_selected_job(job_ref: str, staged: StagedSession) -> dict[str, Any]
 
 def _run_scout_for_session(staged: StagedSession, runtime_config: dict) -> tuple[list[dict], dict[str, Any]]:
     companies = _load_companies(staged)
-    direct_job_urls = _direct_job_urls(runtime_config)
     discovered_jobs: list[dict] = []
     status_payload = {
         "status": "running",
         "phase": "discovering",
         "message": "Discovering jobs from configured company sources.",
         "companies_total": len(companies),
-        "direct_job_urls_total": len(direct_job_urls),
         "companies_scanned": 0,
         "jobs_discovered_total": 0,
         "current_job_index": 0,
@@ -482,29 +402,9 @@ def _run_scout_for_session(staged: StagedSession, runtime_config: dict) -> tuple
         state = load_state()
         seen_urls: set[str] = set(state.get("seen_urls", []))
 
-        if direct_job_urls:
-            status_payload.update(
-                {
-                    "phase": "fetching_direct_jobs",
-                    "message": f"Fetching {len(direct_job_urls)} direct job URL(s).",
-                }
-            )
-            _write_scan_status(staged.state_dir, status_payload)
-            direct_jobs = fetch_job_details(tf, _seed_direct_jobs(direct_job_urls, runtime_config))
-            filtered_direct_jobs = filter_jobs_by_country(direct_jobs, runtime_config)
-            _extend_unique_jobs(discovered_jobs, filtered_direct_jobs)
-            status_payload.update(
-                {
-                    "jobs_discovered_total": len(discovered_jobs),
-                    "message": f"Prepared {len(discovered_jobs)} direct job(s) for evaluation.",
-                }
-            )
-            _write_scan_status(staged.state_dir, status_payload)
-
         for index, company in enumerate(companies, 1):
             status_payload.update(
                 {
-                    "phase": "discovering",
                     "company_index": index,
                     "company_name": company.get("name"),
                     "companies_scanned": index - 1,
@@ -520,7 +420,7 @@ def _run_scout_for_session(staged: StagedSession, runtime_config: dict) -> tuple
             new_jobs = fetch_job_details(tf, new_jobs)
             seen_urls.update(job["url"] for job in new_jobs if job.get("url"))
             filtered_jobs = filter_jobs_by_country(new_jobs, runtime_config)
-            _extend_unique_jobs(discovered_jobs, filtered_jobs)
+            discovered_jobs.extend(filtered_jobs)
             status_payload.update(
                 {
                     "companies_scanned": index,
@@ -540,7 +440,6 @@ def _run_scout_for_session(staged: StagedSession, runtime_config: dict) -> tuple
         "phase": "discovered",
         "message": f"Scouting complete. {len(discovered_jobs)} jobs are ready for evaluation.",
         "companies_total": len(companies),
-        "direct_job_urls_total": len(direct_job_urls),
         "companies_scanned": len(companies),
         "jobs_discovered_total": len(discovered_jobs),
         "raw_jobs_path": str(_raw_jobs_path(staged)),
@@ -762,7 +661,6 @@ async def _attach_downloadable_artifacts(
 async def configure_candidate_search(
     resume_text: str = "",
     company_urls: list[str] | None = None,
-    job_urls: list[str] | None = None,
     target_roles: list[str] | None = None,
     target_locations: list[str] | None = None,
     min_score: int = 60,
@@ -786,20 +684,13 @@ async def configure_candidate_search(
         )
     except Exception as exc:
         return {"status": "error", "message": f"Configuration failed: {exc}"}
-    direct_job_only_input = _is_direct_job_only_input(
-        company_urls=list(company_urls or []),
-        job_urls=list(job_urls or []),
-    )
-    effective_min_score = 0 if direct_job_only_input and min_score == 60 else min_score
-    effective_top_n = len(list(job_urls or [])) if direct_job_only_input and top_n == 5 and job_urls else top_n
     config = JobSearchConfiguration(
         resume_text=resolved_resume_text,
         company_urls=list(company_urls or []),
-        job_urls=list(job_urls or []),
         target_roles=list(target_roles or []),
         target_locations=list(target_locations or []),
-        min_score=effective_min_score,
-        top_n=effective_top_n,
+        min_score=min_score,
+        top_n=top_n,
         llm_provider_override=llm_provider_override,
     ).validated()
 
@@ -824,9 +715,7 @@ async def configure_candidate_search(
     response = {
         "status": "success",
         "message": (
-            "Direct job URLs saved. Fetch and score them next."
-            if direct_job_only_input and rescan_required
-            else "Candidate search configuration saved. Run scouting next."
+            "Candidate search configuration saved. Run scouting next."
             if rescan_required
             else "Candidate search configuration updated. Cached jobs can be reused."
         ),
@@ -869,7 +758,6 @@ def scan_company_jobs(tool_context: ToolContext | None = None) -> dict:
             staged,
             raw_jobs,
             companies_total=len(json.loads(staged.companies_path.read_text(encoding="utf-8"))),
-            direct_job_urls_total=len(configuration.get("job_urls") or []),
         )
         return {
             "status": "success",
@@ -894,7 +782,6 @@ def scan_company_jobs(tool_context: ToolContext | None = None) -> dict:
             staged,
             raw_jobs,
             companies_total=status["companies_total"],
-            direct_job_urls_total=status.get("direct_job_urls_total", 0),
         ),
         "next_step": "score_and_rank_jobs",
     }

@@ -132,7 +132,6 @@ def test_configure_then_scout_then_evaluate_then_tailor_and_export(tmp_path, mon
         job_tools.configure_candidate_search(
             resume_text="Senior AI engineer.",
             company_urls=["https://careers.example.com/jobs"],
-            job_urls=[],
             target_roles=["AI Engineer"],
             target_locations=["Germany"],
             min_score=65,
@@ -193,7 +192,6 @@ def test_combined_scan_alias_runs_scout_then_evaluate(tmp_path, monkeypatch):
         job_tools.configure_candidate_search(
             resume_text="resume text",
             company_urls=["https://careers.example.com/jobs"],
-            job_urls=[],
             target_roles=["ML Engineer"],
             target_locations=["Remote"],
             tool_context=tool_context,
@@ -246,7 +244,6 @@ def test_configure_candidate_search_accepts_resume_pdf_artifact(tmp_path, monkey
     result = asyncio.run(
         job_tools.configure_candidate_search(
             company_urls=["https://careers.example.com/jobs"],
-            job_urls=[],
             target_roles=["ML Engineer"],
             target_locations=["Remote"],
             resume_pdf_artifact="resume.pdf",
@@ -257,63 +254,3 @@ def test_configure_candidate_search_accepts_resume_pdf_artifact(tmp_path, monkey
     assert result["status"] == "success"
     assert result["configuration"]["resume_source"]["type"] == "pdf_artifact"
     assert result["configuration"]["resume_source"]["artifact_name"] == "resume.pdf"
-
-
-def test_scan_company_jobs_accepts_direct_job_urls(tmp_path, monkeypatch):
-    monkeypatch.setenv("JOBHUNT_ADK_RUNTIME_ROOT", str(tmp_path / "runtime"))
-    monkeypatch.setattr(job_tools, "resolve_tinyfish_api_key", lambda: "fake-key")
-
-    fetched_batches = []
-
-    class FakeTinyFish:
-        def __init__(self, api_key: str):
-            self.api_key = api_key
-
-    def fake_fetch_job_details(_tf, jobs):
-        fetched_batches.append([job["url"] for job in jobs])
-        return [
-            {
-                **job,
-                "title": f"Fetched {index}",
-                "content": f"job content {index}",
-            }
-            for index, job in enumerate(jobs, start=1)
-        ]
-
-    monkeypatch.setattr(job_tools, "TinyFish", FakeTinyFish)
-    monkeypatch.setattr(job_tools, "fetch_job_details", fake_fetch_job_details)
-
-    tool_context = FakeToolContext("session-direct-jobs")
-
-    configured = asyncio.run(
-        job_tools.configure_candidate_search(
-            resume_text="Senior backend engineer.",
-            company_urls=[],
-            job_urls=[
-                "https://jobs.example.com/openings/staff-backend-engineer",
-                "https://careers.secondco.ai/roles/principal-platform-engineer",
-            ],
-            tool_context=tool_context,
-        )
-    )
-
-    assert configured["status"] == "success"
-    assert configured["configuration"]["job_urls"] == [
-        "https://jobs.example.com/openings/staff-backend-engineer",
-        "https://careers.secondco.ai/roles/principal-platform-engineer",
-    ]
-    assert configured["configuration"]["target_roles"] == []
-    assert configured["configuration"]["target_locations"] == []
-    assert configured["configuration"]["min_score"] == 0
-    assert configured["configuration"]["top_n"] == 2
-
-    scouted = job_tools.scan_company_jobs(tool_context=tool_context)
-    assert scouted["status"] == "success"
-    assert scouted["used_cached_results"] is False
-    assert scouted["scout_summary"]["companies_total"] == 0
-    assert scouted["scout_summary"]["direct_job_urls_total"] == 2
-    assert scouted["scout_summary"]["raw_jobs_count"] == 2
-    assert fetched_batches == [[
-        "https://jobs.example.com/openings/staff-backend-engineer",
-        "https://careers.secondco.ai/roles/principal-platform-engineer",
-    ]]

@@ -126,7 +126,6 @@ def _build_persisted_state_payload(
             f"roles={', '.join(config.target_roles)} | "
             f"locations={', '.join(config.target_locations)} | "
             f"companies={len(config.company_urls)} | "
-            f"direct_jobs={len(config.job_urls)} | "
             f"min_score={config.min_score} | top_n={config.top_n}"
         ),
         SESSION_DIR_STATE_KEY: str(staged.session_dir),

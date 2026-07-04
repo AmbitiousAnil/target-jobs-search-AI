@@ -2,61 +2,41 @@
 
 ## Install
 
-```bash
-cd adk-jobhunt-pilot
+```powershell
 python -m venv .venv
-.venv\Scripts\activate
-pip install -e .[adk,dev]
+.\.venv\Scriptsctivate
+pip install -e .[dev]
 ```
 
 ## Environment Variables
 
-Set the provider keys outside chat:
+Set provider keys outside chat:
 
-```bash
+```powershell
 set TINYFISH_API_KEY=...
-set OPENROUTER_API_KEY=...
 set GOOGLE_API_KEY=...
+set NVIDIA_API_KEY=...
 ```
 
-Optional overrides:
+## Start UI
 
-```bash
-set ADK_MODEL=gemini-2.5-flash
-set JOB_HUNT_SOURCE_ROOT=D:\My_Projects\autopilot-jobhunt
+```powershell
+.\.venv\Scripts\python.exe -m google.adk.cli web --host 127.0.0.1 --port 8080 autopilot_jobhunt
 ```
 
-`JOB_HUNT_SOURCE_ROOT` matters when this folder is moved away from the repo and the `job_hunt` package is no longer importable from a sibling path.
+Wrapped UI with download routes:
 
-## Start The UI
-
-```bash
-adk web .
-```
-
-Useful variants:
-
-```bash
-adk web --host 0.0.0.0 --port 8000 .
-adk web --session_service_uri "sqlite:///runtime/adk_sessions.db" .
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn autopilot_jobhunt.web_app:app --host 127.0.0.1 --port 8080
 ```
 
 ## Suggested Demo Flow
 
-1. Paste resume text.
-2. Provide one or more company career URLs.
+1. Paste resume text or upload resume PDF.
+2. Provide company career URLs.
 3. Provide target roles and target locations.
-4. Let the agent call `configure_job_search(...)`.
+4. Let agent call `configure_candidate_search(...)`.
 5. Ask it to scan.
-6. Ask it to draft for `#1` or another result.
-7. Ask it to export results.
-
-## Runtime Artifacts
-
-Each session writes only inside:
-
-```text
-runtime/sessions/<session_id>/
-```
-
-That directory contains the staged `config.json`, `companies.json`, `resume.md`, `state/`, and `output/` files for the current session.
+6. Ask it to score and rank.
+7. Ask it to tailor selected `job_ref`.
+8. Ask it to export results.

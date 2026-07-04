@@ -1,4 +1,4 @@
-from job_hunt import scanner
+from autopilot_jobhunt.discovery.location import build_candidate_profile, job_matches_country_filter
 
 
 def test_job_matches_country_filter_accepts_city_only_location():
@@ -8,7 +8,7 @@ def test_job_matches_country_filter_accepts_city_only_location():
         "content": "Hybrid role in Berlin office.",
     }
 
-    assert scanner.job_matches_country_filter(job, ["Germany"]) is True
+    assert job_matches_country_filter(job, ["Germany"]) is True
 
 
 def test_job_matches_country_filter_rejects_other_country_city():
@@ -18,7 +18,7 @@ def test_job_matches_country_filter_rejects_other_country_city():
         "content": "Hybrid role in Paris office.",
     }
 
-    assert scanner.job_matches_country_filter(job, ["Germany"]) is False
+    assert job_matches_country_filter(job, ["Germany"]) is False
 
 
 def test_job_matches_country_filter_accepts_bengaluru_for_india():
@@ -28,7 +28,7 @@ def test_job_matches_country_filter_accepts_bengaluru_for_india():
         "content": "Hybrid role based in Bengaluru.",
     }
 
-    assert scanner.job_matches_country_filter(job, ["India"]) is True
+    assert job_matches_country_filter(job, ["India"]) is True
 
 
 def test_job_matches_country_filter_accepts_usa_alias_for_new_york():
@@ -38,11 +38,11 @@ def test_job_matches_country_filter_accepts_usa_alias_for_new_york():
         "content": "Hybrid role based in New York.",
     }
 
-    assert scanner.job_matches_country_filter(job, ["USA"]) is True
+    assert job_matches_country_filter(job, ["USA"]) is True
 
 
 def test_build_candidate_profile_includes_preferred_locations():
-    profile = scanner._build_candidate_profile(
+    profile = build_candidate_profile(
         {
             "candidate": {
                 "name": "Candidate",

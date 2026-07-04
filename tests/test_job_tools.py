@@ -1,14 +1,35 @@
-import asyncio
+﻿import asyncio
 import json
-from pathlib import Path
 
 from autopilot_jobhunt.tools import job_tools
+
+
+class FakeSession:
+    def __init__(self, session_id: str, user_id: str = "user", app_name: str = "autopilot_jobhunt"):
+        self.id = session_id
+        self.user_id = user_id
+        self.app_name = app_name
 
 
 class FakeToolContext:
     def __init__(self, session_id: str):
         self.session_id = session_id
         self.state = {}
+        self.session = FakeSession(session_id)
+        self.user_id = self.session.user_id
+        self.saved_artifacts = []
+
+    async def save_artifact(self, filename, artifact, custom_metadata=None):
+        version = len(self.saved_artifacts)
+        self.saved_artifacts.append(
+            {
+                "filename": filename,
+                "artifact": artifact,
+                "custom_metadata": custom_metadata or {},
+                "version": version,
+            }
+        )
+        return version
 
 
 def test_scan_fails_cleanly_before_configuration():
@@ -106,7 +127,7 @@ def test_configure_then_scout_then_evaluate_then_tailor_and_export(tmp_path, mon
         }
 
     monkeypatch.setattr(job_tools, "_run_scout_for_session", fake_scout)
-    monkeypatch.setattr(job_tools, "_run_evaluator_for_session", fake_evaluator)
+    monkeypatch.setattr(job_tools, "_score_service_run", fake_evaluator)
     monkeypatch.setattr(job_tools, "_run_tailoring_for_session", fake_tailor)
     monkeypatch.setattr(job_tools, "_run_export_for_session", fake_export)
     monkeypatch.setattr(
@@ -154,7 +175,31 @@ def test_configure_then_scout_then_evaluate_then_tailor_and_export(tmp_path, mon
     assert evaluated["scan_summary"]["top_matches"][0]["score"] == 91
     assert evaluated["scan_summary"]["top_matches"][0]["job_ref"] == "#2"
     assert evaluated["next_step"] == "tailor_application_materials"
-    assert "Reply with the job_ref" in evaluated["selection_prompt"]
+    assert "Reply with job_ref" in evaluated["selection_prompt"]
+    assert "Scoring complete. 2 jobs were scored." in evaluated["results_markdown"]
+    assert "Jobs meeting min_score 65: 2." in evaluated["results_markdown"]
+    assert "- #2 | score 91 | Data Scientist | Second | Berlin" in evaluated["results_markdown"]
+    assert "- #1 | score 72 | Machine Learning Engineer | Example | Remote" in evaluated["results_markdown"]
+    assert evaluated["selection_options"] == [
+        {
+            "job_ref": "#2",
+            "label": "#2 - Data Scientist at Second (score: 91)",
+            "score": 91,
+            "title": "Data Scientist",
+            "company": "Second",
+            "location": "Berlin",
+            "url": "https://example.com/jobs/2",
+        },
+        {
+            "job_ref": "#1",
+            "label": "#1 - Machine Learning Engineer at Example (score: 72)",
+            "score": 72,
+            "title": "Machine Learning Engineer",
+            "company": "Example",
+            "location": "Remote",
+            "url": "https://example.com/jobs/1",
+        },
+    ]
 
     tailored = asyncio.run(
         job_tools.tailor_application_materials(
@@ -169,6 +214,9 @@ def test_configure_then_scout_then_evaluate_then_tailor_and_export(tmp_path, mon
     assert tailored["skill"]["name"] == "job-application-tailor"
     assert tailored["files"]["resume_pdf_path"].endswith("resume_example.pdf")
     assert tailored["files"]["cover_letter_pdf_path"].endswith("cover_letter_example.pdf")
+    assert "[Tailored Resume PDF](" in tailored["download_markdown"]
+    assert "[Tailored Cover Letter PDF](" in tailored["download_markdown"]
+    assert "/downloads/autopilot_jobhunt/user/session-42/" in tailored["download_markdown"]
 
     exported = asyncio.run(
         job_tools.export_results(
@@ -181,37 +229,9 @@ def test_configure_then_scout_then_evaluate_then_tailor_and_export(tmp_path, mon
     assert exported["status"] == "success"
     assert exported["csv_path"].endswith("jobs_2026-06-29_last7d.csv")
     assert exported["pdf_path"].endswith("jobs_2026-06-29_last7d.pdf")
+    assert "[Scored Jobs PDF Export](" in exported["download_markdown"]
+    assert "[Scored Jobs CSV Export](" in exported["download_markdown"]
     assert export_calls == [(80, 7, "both", "session-42")]
-
-
-def test_combined_scan_alias_runs_scout_then_evaluate(tmp_path, monkeypatch):
-    monkeypatch.setenv("JOBHUNT_ADK_RUNTIME_ROOT", str(tmp_path / "runtime"))
-    tool_context = FakeToolContext("session-99")
-
-    asyncio.run(
-        job_tools.configure_candidate_search(
-            resume_text="resume text",
-            company_urls=["https://careers.example.com/jobs"],
-            target_roles=["ML Engineer"],
-            target_locations=["Remote"],
-            tool_context=tool_context,
-        )
-    )
-
-    monkeypatch.setattr(
-        job_tools,
-        "scan_company_jobs",
-        lambda tool_context=None: {"status": "success", "message": "scouted"},
-    )
-    monkeypatch.setattr(
-        job_tools,
-        "score_and_rank_jobs",
-        lambda tool_context=None: {"status": "success", "message": "evaluated"},
-    )
-
-    result = job_tools.scan_configured_jobs(tool_context=tool_context)
-    assert result["status"] == "success"
-    assert result["message"] == "evaluated"
 
 
 class FakeArtifactInlineData:
@@ -254,3 +274,69 @@ def test_configure_candidate_search_accepts_resume_pdf_artifact(tmp_path, monkey
     assert result["status"] == "success"
     assert result["configuration"]["resume_source"]["type"] == "pdf_artifact"
     assert result["configuration"]["resume_source"]["artifact_name"] == "resume.pdf"
+
+
+def test_tailor_application_materials_returns_error_when_artifact_attach_fails(tmp_path, monkeypatch):
+    staged = job_tools.StagedSession(
+        session_id="session-tailor-error",
+        session_dir=tmp_path / "session-tailor-error",
+        resume_path=tmp_path / "session-tailor-error" / "resume.md",
+        companies_path=tmp_path / "session-tailor-error" / "companies.json",
+        config_path=tmp_path / "session-tailor-error" / "config.json",
+        manifest_path=tmp_path / "session-tailor-error" / "manifest.json",
+        state_dir=tmp_path / "session-tailor-error" / "state",
+        output_dir=tmp_path / "session-tailor-error" / "output",
+    )
+    output_dir = staged.output_dir / "example-2026-07-04"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "resume_example.md").write_text("resume", encoding="utf-8")
+    (output_dir / "resume_example.pdf").write_bytes(b"%PDF-1.4 resume")
+    (output_dir / "cover_letter_example.md").write_text("cover", encoding="utf-8")
+    (output_dir / "cover_letter_example.pdf").write_bytes(b"%PDF-1.4 cover")
+    (output_dir / "application_info.txt").write_text("info", encoding="utf-8")
+
+    monkeypatch.setattr(job_tools, "load_staged_session", lambda tool_context: staged)
+    monkeypatch.setattr(job_tools, "load_runtime_config", lambda staged: {})
+    monkeypatch.setattr(job_tools, "load_tailoring_guidance", lambda: {"skill_name": "tailor", "skill_path": str(tmp_path / "skill")})
+    monkeypatch.setattr(job_tools, "_run_tailoring_for_session", lambda staged, job_ref, runtime_config, guidance: output_dir)
+    monkeypatch.setattr(job_tools, "resolve_selected_job", lambda job_ref, staged: {"url": "https://example.com/jobs/1"})
+    monkeypatch.setattr(job_tools, "write_tailoring_skill_manifest", lambda output_dir, **kwargs: output_dir / "tailoring_skill_manifest.json")
+
+    async def boom(tool_context, *paths):
+        raise RuntimeError("artifact backend down")
+
+    monkeypatch.setattr(job_tools, "_attach_downloadable_artifacts", boom)
+
+    result = asyncio.run(job_tools.tailor_application_materials("#1", tool_context=FakeToolContext("session-tailor-error")))
+
+    assert result["status"] == "error"
+    assert result["message"] == "Tailoring failed: artifact backend down"
+
+
+def test_export_results_returns_error_when_artifact_attach_fails(tmp_path, monkeypatch):
+    staged = job_tools.StagedSession(
+        session_id="session-export-error",
+        session_dir=tmp_path / "session-export-error",
+        resume_path=tmp_path / "session-export-error" / "resume.md",
+        companies_path=tmp_path / "session-export-error" / "companies.json",
+        config_path=tmp_path / "session-export-error" / "config.json",
+        manifest_path=tmp_path / "session-export-error" / "manifest.json",
+        state_dir=tmp_path / "session-export-error" / "state",
+        output_dir=tmp_path / "session-export-error" / "output",
+    )
+    export_pdf = staged.output_dir / "jobs.pdf"
+    export_pdf.parent.mkdir(parents=True, exist_ok=True)
+    export_pdf.write_bytes(b"%PDF-1.4 export")
+
+    monkeypatch.setattr(job_tools, "load_staged_session", lambda tool_context: staged)
+    monkeypatch.setattr(job_tools, "_run_export_for_session", lambda staged, min_score, days, export_format: {"pdf_path": str(export_pdf), "csv_path": None})
+
+    async def boom(tool_context, *paths):
+        raise RuntimeError("artifact upload failed")
+
+    monkeypatch.setattr(job_tools, "_attach_downloadable_artifacts", boom)
+
+    result = asyncio.run(job_tools.export_results(tool_context=FakeToolContext("session-export-error")))
+
+    assert result["status"] == "error"
+    assert result["message"] == "Export failed: artifact upload failed"

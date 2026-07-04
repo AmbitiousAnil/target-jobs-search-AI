@@ -1,5 +1,6 @@
-from autopilot_jobhunt.services.session_files import JobSearchConfiguration, stage_session_files
-from autopilot_jobhunt.services.session_runtime import (
+﻿from autopilot_jobhunt.domain.models import JobSearchConfiguration
+from autopilot_jobhunt.storage.session_files import stage_session_files
+from autopilot_jobhunt.storage.session_state import (
     load_config_change_summary,
     load_internal_session_configuration,
     load_rescan_required,
@@ -39,7 +40,6 @@ def test_session_runtime_recovers_persisted_configuration_from_disk(tmp_path, mo
     )
 
     recovered_context = FakeToolContext("session:recover", with_state=False)
-
     public_config = load_session_configuration(recovered_context)
     internal_config = load_internal_session_configuration(recovered_context)
 
@@ -80,7 +80,4 @@ def test_update_rescan_state_updates_disk_fallback(tmp_path, monkeypatch):
     )
 
     assert load_rescan_required(recovered_context) is False
-    assert (
-        load_config_change_summary(recovered_context)
-        == "Using cached scored jobs from the last completed evaluation."
-    )
+    assert load_config_change_summary(recovered_context) == "Using cached scored jobs from the last completed evaluation."

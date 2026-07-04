@@ -1,5 +1,5 @@
-from job_hunt.config_utils import sanitize_nested_strings
-from job_hunt.llm_utils import OpenRouterService, create_llm_service, NvidiaService
+﻿from autopilot_jobhunt.config.text import sanitize_nested_strings
+from autopilot_jobhunt.llm.providers.openai_compatible import OpenRouterService, NvidiaService, create_chat_service
 
 
 def test_sanitize_nested_strings_trims_recursive_config_values():
@@ -21,7 +21,7 @@ def test_sanitize_nested_strings_trims_recursive_config_values():
 
 
 def test_llm_service_trims_provider_and_api_key_values():
-    service = create_llm_service({"llm_provider": " nvidia \r\n"})
+    service = create_chat_service({"llm_provider": " nvidia \r\n"})
 
     assert isinstance(service, NvidiaService)
     assert OpenRouterService({"openrouter_api_key": " sk-test \r\n"})._api_key() == "sk-test"

@@ -1,16 +1,14 @@
-import json
+﻿import json
 
-from autopilot_jobhunt.services import session_files
-from autopilot_jobhunt.services.session_files import (
-    JobSearchConfiguration,
-    stage_session_files,
-)
+from autopilot_jobhunt.storage import session_files
+from autopilot_jobhunt.domain.models import JobSearchConfiguration
+from autopilot_jobhunt.storage.session_files import stage_session_files
 
 
 def test_stage_session_files_creates_isolated_workspace(tmp_path, monkeypatch):
     monkeypatch.setenv("JOBHUNT_ADK_RUNTIME_ROOT", str(tmp_path / "runtime"))
     monkeypatch.setenv("TINYFISH_API_KEY", "secret-should-not-be-written")
-    monkeypatch.setattr(session_files, "_load_repo_config", lambda: {"tinyfish_api_key": ""})
+    monkeypatch.setattr(session_files, "load_repo_config", lambda: {"tinyfish_api_key": ""})
 
     config = JobSearchConfiguration(
         resume_text="Senior ML engineer with Python and LLM experience.",
@@ -45,11 +43,13 @@ def test_stage_session_files_creates_isolated_workspace(tmp_path, monkeypatch):
     assert written_config["candidate"]["countries"] == ["Germany", "Remote"]
     assert written_config["llm_provider"] == "openrouter"
     assert len(written_companies) == 2
+
+
 def test_stage_session_files_inherits_nvidia_model_settings_from_repo_config(tmp_path, monkeypatch):
     monkeypatch.setenv("JOBHUNT_ADK_RUNTIME_ROOT", str(tmp_path / "runtime"))
     monkeypatch.setattr(
         session_files,
-        "_load_repo_config",
+        "load_repo_config",
         lambda: {
             "tinyfish_api_key": "",
             "llm_provider": "nvidia",
@@ -70,15 +70,12 @@ def test_stage_session_files_inherits_nvidia_model_settings_from_repo_config(tmp
 
     assert written_config["llm_provider"] == "nvidia"
     assert written_config["nvidia_model"] == "nvidia/nemotron-3-nano-30b-a3b"
-    assert written_config["nvidia_fallback_models"] == [
-        "google/gemma-4-31b-itb",
-        "meta/llama-3.1-8b-instruct",
-    ]
+    assert written_config["nvidia_fallback_models"] == ["google/gemma-4-31b-itb", "meta/llama-3.1-8b-instruct"]
 
 
 def test_stage_session_files_rejects_invalid_company_urls(tmp_path, monkeypatch):
     monkeypatch.setenv("JOBHUNT_ADK_RUNTIME_ROOT", str(tmp_path / "runtime"))
-    monkeypatch.setattr(session_files, "_load_repo_config", lambda: {"tinyfish_api_key": ""})
+    monkeypatch.setattr(session_files, "load_repo_config", lambda: {"tinyfish_api_key": ""})
 
     config = JobSearchConfiguration(
         resume_text="resume",

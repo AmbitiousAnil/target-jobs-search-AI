@@ -8,7 +8,6 @@ WORKDIR /app
 
 COPY pyproject.toml README.md config.example.json ./
 COPY autopilot_jobhunt ./autopilot_jobhunt
-COPY job_hunt ./job_hunt
 COPY skills ./skills
 
 RUN pip install --no-cache-dir .
@@ -18,4 +17,4 @@ USER appuser
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "adk web --host 0.0.0.0 --port ${PORT:-8080} ."]
+CMD ["sh", "-c", "python -m uvicorn autopilot_jobhunt.web_app:app --host 0.0.0.0 --port ${PORT:-8080}"]

@@ -1,5 +1,6 @@
 import json
 
+from autopilot_jobhunt.services import score_service
 from autopilot_jobhunt.tools import job_tools
 
 
@@ -52,13 +53,13 @@ def test_run_evaluator_updates_jobs_scored_total_after_each_unique_job(tmp_path,
             jobs[1] | {"score": 82, "extracted_title": "Scored 2", "reason": "fit", "worth_applying": True},
         ]
 
-    monkeypatch.setattr(job_tools, "_write_scan_status", fake_write_scan_status)
-    monkeypatch.setattr(job_tools, "score_jobs", fake_score_jobs)
-    monkeypatch.setattr(job_tools, "_persist_scan_artifacts", lambda *args, **kwargs: None)
-    monkeypatch.setattr(job_tools, "_merge_job_history", lambda scored_jobs: scored_jobs)
+    monkeypatch.setattr(score_service, "write_scan_status", fake_write_scan_status)
+    monkeypatch.setattr(score_service, "score_jobs", fake_score_jobs)
+    monkeypatch.setattr(score_service, "write_json", lambda *args, **kwargs: None)
+    monkeypatch.setattr(score_service, "read_job_history", lambda state_dir: [])
 
     runtime_config = {"candidate": {"min_score": 60}}
-    scored_jobs, completed_status = job_tools._run_evaluator_for_session(staged, runtime_config)
+    scored_jobs, completed_status = score_service.run_evaluator_for_session(staged, runtime_config)
 
     assert len(scored_jobs) == 2
     assert completed_status["jobs_scored_total"] == 2

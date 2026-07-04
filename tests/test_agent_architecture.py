@@ -25,6 +25,8 @@ def test_root_agent_uses_single_agent_tool_handoff():
         "To get started, send your resume text or upload a resume PDF, plus your target roles, target locations, and company career-page URLs."
         in agent_module.MASTER_INSTRUCTION
     )
+    assert "If a tool returns `download_markdown`, copy that markdown block verbatim" in agent_module.MASTER_INSTRUCTION
+    assert "If score_and_rank_jobs returns `results_markdown`, copy that block verbatim" in agent_module.MASTER_INSTRUCTION
     assert tool_names == [
         "configure_candidate_search",
         "scan_company_jobs",

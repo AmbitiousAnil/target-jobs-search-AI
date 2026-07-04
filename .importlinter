@@ -1,0 +1,12 @@
+[importlinter]
+root_package = autopilot_jobhunt
+
+[importlinter:contract:layers]
+name = package layers
+type = layers
+layers =
+    autopilot_jobhunt.agent
+    autopilot_jobhunt.tools
+    autopilot_jobhunt.services
+    autopilot_jobhunt.domain:autopilot_jobhunt.discovery:autopilot_jobhunt.export:autopilot_jobhunt.llm:autopilot_jobhunt.scoring:autopilot_jobhunt.storage:autopilot_jobhunt.tailoring
+    autopilot_jobhunt.config

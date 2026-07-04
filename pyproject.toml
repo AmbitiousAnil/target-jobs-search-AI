@@ -5,16 +5,16 @@ build-backend = "hatchling.build"
 [project]
 name = "adk-jobhunt-pilot"
 version = "0.1.0"
-description = "Isolated Google ADK pilot for the autopilot jobhunt workflow."
+description = "Isolated Google ADK pilot for autopilot jobhunt workflow."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "google-adk>=2.3.0",
+    "httpx>=0.28.0",
     "litellm>=1.76.0",
     "tinyfish>=0.2.5",
     "openai>=2.0.0",
     "pypdf>=5.7.0",
-    "python-dotenv>=1.0.0",
     "reportlab>=4.4.2",
     "geonamescache>=3.0.1",
 ]
@@ -30,11 +30,18 @@ cloud = [
 ]
 dev = [
     "pytest>=8.0",
+    "ruff>=0.15.20",
+    "import-linter>=2.13",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["autopilot_jobhunt", "job_hunt"]
-include = ["job_hunt/data/**"]
+packages = ["autopilot_jobhunt"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+extend-select = ["I"]

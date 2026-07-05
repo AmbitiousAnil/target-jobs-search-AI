@@ -306,15 +306,22 @@ are fully qualified.
 
 ## Project journey
 
-The project began as a single-flow, "vibe-coded" job-hunt script with two overlapping packages and a
-1,100-line tool file. It was refactored into the layered ADK application documented here:
+Most of the meaningful decisions in this project were about restraint — choosing what the agent
+should *not* do — and each one is reflected directly in the code:
 
-- collapsed two packages into one, one responsibility per module;
-- broke a bidirectional package dependency and added **import-linter** to keep the layering honest;
-- split the god-files into a thin tool layer over dedicated services;
-- removed dead/unshippable code (including a non-functional MCP path and providers whose SDKs were
-  never dependencies) so the README reflects exactly what the code does;
-- added characterization tests and CI gates (pytest + import smoke + layer contract).
+- **Trust company-owned pages, not a broad search.** Discovery fetches configured `careers_url`s and
+  expands ATS listings instead of firing a wide search query, which keeps results precise and free of
+  stale, mirrored job-board copies (`discovery/`).
+- **One agent, not a swarm.** A single root agent orchestrates seven tools directly. An earlier
+  handoff-heavy multi-agent design added prompt churn and ambiguous session ownership for no real
+  benefit on a mostly-linear workflow.
+- **One job description per LLM request, persisted immediately.** Batching many JDs into one prompt
+  was slow and fragile on local models; scoring now isolates each job so a stopped run keeps its
+  progress and one bad reply kills one job, not the batch (`scoring/`).
+- **A versioned skill, not an ad-hoc prompt, governs tailoring.** The `job-application-tailor` skill
+  enforces truthful rewriting and every generated document is traceable back to it via a manifest.
+- **Enforced layering.** `agent/tools → services → capabilities → config` is kept honest by
+  **import-linter** in CI, alongside pytest and an import smoke test.
 
 The result is a small, readable codebase where each course concept maps to a specific, testable part
 of the system.

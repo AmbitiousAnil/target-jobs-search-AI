@@ -200,7 +200,7 @@ Security is enforced in code, not just described:
   extraction from real company career pages (not a static dataset), with rate-limit-aware batching.
 - **LiteLLM + multi-provider factory** — a single provider registry powers two entrypoints: the ADK
   Agent model *and* a text-completion chat client for scoring/drafting. Providers (NVIDIA, Google,
-  OpenRouter, Z.ai, Ollama) are swappable via config/env with fallback model chains.
+  OpenRouter, Z.ai, OpenCode Zen, Ollama) are swappable via config/env with fallback model chains.
 - **reportlab / pypdf** — render tailored resumes, cover letters, and export tables to PDF, and
   extract text from uploaded resume PDFs.
 
@@ -250,8 +250,8 @@ To exercise the custom clickable `/downloads/...` routes locally, run the wrappe
 
 - `TINYFISH_API_KEY` — job discovery / job-description fetch.
 - One LLM provider key for the chosen provider: `NVIDIA_API_KEY` (default provider),
-  `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`, or `Z_AI_API_KEY`. Ollama runs locally and needs no key
-  (`OLLAMA_BASE_URL` optional).
+  `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`, `Z_AI_API_KEY`, or `ZEN_API_KEY` for OpenCode Zen.
+  Ollama runs locally and needs no key (`OLLAMA_BASE_URL` optional).
 
 **Config notes**
 
@@ -259,6 +259,8 @@ To exercise the custom clickable `/downloads/...` routes locally, run the wrappe
   a local `config.json` for machine-specific overrides — `config.json` is git-ignored.
 - Environment variables override config values. `ADK_MODEL_PROVIDER` can override the provider at
   runtime.
+- Supported provider values include `nvidia` (default), `google`, `openrouter`, `z_ai`, `zen` /
+  `opencode_zen` for OpenCode Zen, and `ollama`.
 - **Never commit real keys.** Provide them via environment variables or a local, git-ignored
   `config.json` / `.env`.
 
@@ -278,6 +280,29 @@ Current baseline: **`29 passed`**, and the import-linter layer contract is **kep
 The container entrypoint is `autopilot_jobhunt.web_app:app`. Deployment is optional for judging but
 fully reproducible:
 
+Project-specific Google Cloud commands:
+
+```powershell
+# Update without build
+gcloud run services update adk-jobhunt-pilot --region=asia-south1 --project=personal-projects-5aa3f --set-env-vars LOG_LEVEL=DEBUG
+```
+
+```powershell
+# Build project
+gcloud builds submit --tag asia-south1-docker.pkg.dev/personal-projects-5aa3f/adk-jobhunt-repo/adk-jobhunt-pilot:v1
+```
+
+```powershell
+# Deploy on Google Cloud
+gcloud run deploy adk-jobhunt-pilot --image asia-south1-docker.pkg.dev/personal-projects-5aa3f/adk-jobhunt-repo/adk-jobhunt-pilot:v1 --region=asia-south1 --project=personal-projects-5aa3f --platform=managed --allow-unauthenticated --port=8080 --set-env-vars LOG_LEVEL=DEBUG --set-secrets "TINYFISH_API_KEY=TINYFISH_API_KEY:latest,NVIDIA_API_KEY=NVIDIA_API_KEY:latest"
+```
+
+```powershell
+# Undeploy or delete service on Google Cloud
+gcloud run services delete adk-jobhunt-pilot --region=asia-south1 --project=personal-projects-5aa3f
+```
+
+Generic template:
 ```powershell
 # 1) Build
 gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/adk-jobhunt-pilot

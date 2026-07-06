@@ -37,6 +37,10 @@ _ENV_MAPPING = {
     "Z_AI_API_KEY": "z_ai_api_key",
     "Z_AI_MODEL": "z_ai_model",
     "Z_AI_FALLBACK_MODELS": "z_ai_fallback_models",
+    "ZEN_API_KEY": "opencode_zen_api_key",
+    "ZEN_BASE_URL": "opencode_zen_base_url",
+    "ZEN_MODEL": "opencode_zen_model",
+    "ZEN_FALLBACK_MODELS": "opencode_zen_fallback_models",
     "OLLAMA_API_KEY": "ollama_api_key",
     "OLLAMA_BASE_URL": "ollama_base_url",
     "OLLAMA_MODEL": "ollama_model",
@@ -49,6 +53,7 @@ _LIST_ENV_KEYS = {
     "NVIDIA_FALLBACK_MODELS",
     "GOOGLE_FALLBACK_MODELS",
     "Z_AI_FALLBACK_MODELS",
+    "ZEN_FALLBACK_MODELS",
     "OLLAMA_FALLBACK_MODELS",
 }
 

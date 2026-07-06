@@ -1,6 +1,14 @@
 {
   "tinyfish_api_key": "",
-  "llm_provider": "nvidia",
+  "llm_provider": "zen",
+  "opencode_zen_api_key": "",
+  "opencode_zen_base_url":  "https://opencode.ai/zen/v1",
+  "opencode_zen_model":  "deepseek-v4-flash-free",
+  "opencode_zen_fallback_models":  [
+    "nemotron-3-ultra-free",
+    "deepseek-v4-flash-free",
+    "mimo-v2.5-free"
+  ],
   "nvidia_api_key": "",
   "nvidia_model": "google/gemma-4-31b-it",
   "nvidia_fallback_models": [

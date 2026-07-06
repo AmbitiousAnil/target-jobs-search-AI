@@ -106,6 +106,23 @@ class ZaiService(OpenAICompatibleService):
     default_model = "glm-4.5-air"
 
 
+class ZenService(OpenAICompatibleService):
+    provider_label = "OpenCode Zen"
+    api_key_config_key = "opencode_zen_api_key"
+    api_key_env_key = "ZEN_API_KEY"
+    base_url = "https://opencode.ai/zen/v1"
+    model_config_key = "opencode_zen_model"
+    fallback_models_config_key = "opencode_zen_fallback_models"
+    default_model = "qwen-3.6-plus-free"
+
+    def _client(self) -> OpenAI:
+        return OpenAI(
+            api_key=self._api_key(),
+            base_url=first_stripped(self.config.get("opencode_zen_base_url"), os.getenv("ZEN_BASE_URL"), default=self.base_url),
+            timeout=_LLM_REQUEST_TIMEOUT,
+        )
+
+
 class OllamaService(OpenAICompatibleService):
     provider_label = "Ollama"
     api_key_config_key = "ollama_api_key"
@@ -137,6 +154,9 @@ def create_chat_service(config: dict) -> LLMService:
         "google": GoogleService,
         "zai": ZaiService,
         "z_ai": ZaiService,
+        "zen": ZenService,
+        "opencode_zen": ZenService,
+        "opencode-zen": ZenService,
         "ollama": OllamaService,
     }
     try:
@@ -176,4 +196,3 @@ def chat_with_openai_models(llm: OpenAI, provider_label: str, models: list[str],
             except Exception as exc:
                 raise RuntimeError(f"LLM error for {provider_label} model {model}: {_format_exception_details(exc)}") from exc
     raise RuntimeError(f"All {provider_label} LLM models failed.")
-

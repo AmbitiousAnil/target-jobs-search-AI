@@ -4,13 +4,14 @@ import os
 from typing import Any
 
 from .base import LLMProviderService, string_value
-from .providers import GoogleAdkService, NvidiaAdkService, OllamaAdkService
+from .providers import GoogleAdkService, NvidiaAdkService, OllamaAdkService, ZenAdkService
 
 
 _REGISTERED_PROVIDER_SERVICES: tuple[type[LLMProviderService], ...] = (
     GoogleAdkService,
     NvidiaAdkService,
     OllamaAdkService,
+    ZenAdkService,
 )
 
 
@@ -46,4 +47,3 @@ def copy_provider_settings(*, provider: str, source_config: dict[str, Any], targ
 
 def create_llm_service(config: dict[str, Any]) -> LLMProviderService:
     return get_provider_service_class(get_configured_provider(config))(config)
-
